@@ -28,12 +28,7 @@ public class PropietariosController : ControllerBase
     {
         try
         {
-            string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: loginView.Clave,
-                salt: System.Text.Encoding.ASCII.GetBytes(_configuration["Salt"]),
-                prf: KeyDerivationPrf.HMACSHA1,
-                iterationCount: 1000,
-                numBytesRequested: 256 / 8));
+            string hashed = Hash(loginView.Clave);
 
             var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Email == loginView.Email);
 
@@ -102,6 +97,40 @@ public class PropietariosController : ControllerBase
         }
     }
 
+    [Authorize]
+    [HttpPut("clave")] // Listo
+    public async Task<IActionResult> Clave([FromForm] CambiarClaveView cambiarClaveView)
+    {
+        try
+        {
+            string id = User.Claims.First(c => c.Type == "Id").Value;
+            var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
+
+            if (p == null)
+                return NotFound();
+
+            string hashedActual = Hash(cambiarClaveView.Actual);
+
+            if (hashedActual != p.Clave)
+                return BadRequest("La clave actual es incorrecta");
+
+            if (cambiarClaveView.Nueva != cambiarClaveView.Repetida)
+                return BadRequest("Las claves no coinciden");
+
+            string hashedNueva = Hash(cambiarClaveView.Nueva);
+
+            p.Clave = hashedNueva;
+            _context.SaveChanges();
+            return Ok("Clave cambiada correctamente");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    
+
     // [HttpPost("hashed")] // Para hashear claves
     // public IActionResult Hasheada()
     // {
@@ -114,5 +143,15 @@ public class PropietariosController : ControllerBase
 
     //     return Ok(hashed);
     // }
+
+    private string Hash(string password) // Para hashear claves
+    {
+        return Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: password,
+            salt: System.Text.Encoding.ASCII.GetBytes(_configuration["Salt"]),
+            prf: KeyDerivationPrf.HMACSHA1,
+            iterationCount: 1000,
+            numBytesRequested: 256 / 8));
+    }
 
 }
