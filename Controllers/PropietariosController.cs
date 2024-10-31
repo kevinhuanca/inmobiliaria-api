@@ -47,9 +47,8 @@ public class PropietariosController : ControllerBase
             var credenciales = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var claims = new List<Claim>
             {
-                new Claim("FullName", p.Nombre + " " + p.Apellido),
                 new Claim("Id", p.Id.ToString()),
-                new Claim("Email", p.Email)
+                new Claim("FullName", p.Nombre + " " + p.Apellido)
             };
 
             var token = new JwtSecurityToken(
@@ -74,6 +73,33 @@ public class PropietariosController : ControllerBase
         string id = User.Claims.First(c => c.Type == "Id").Value;
         var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
         return Ok(p);
+    }
+
+    [Authorize]
+    [HttpPut("modificar")] // Listo
+    public async Task<IActionResult> Modificar([FromForm] Propietario propietario)
+    {
+        try
+        {
+            string id = User.Claims.First(c => c.Type == "Id").Value;
+            var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
+
+            if (p == null)
+                return NotFound();
+
+            p.Dni = propietario.Dni;
+            p.Nombre = propietario.Nombre;
+            p.Apellido = propietario.Apellido;
+            p.Telefono = propietario.Telefono;
+            p.Email = propietario.Email;
+
+            _context.SaveChanges();
+            return Ok("Modificado correctamente");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     // [HttpPost("hashed")] // Para hashear claves
