@@ -1,5 +1,7 @@
 namespace inmobiliaria.Controllers;
 
+using System;
+using System.IO;
 using Microsoft.AspNetCore.Mvc;
 using inmobiliaria.Models;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +69,11 @@ public class PropietariosController : ControllerBase
     {
         string id = User.Claims.First(c => c.Type == "Id").Value;
         var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
+
+        if (p == null)
+            return NotFound();
+        
+        p.Clave = "";
         return Ok(p);
     }
 
@@ -81,6 +88,12 @@ public class PropietariosController : ControllerBase
 
             if (p == null)
                 return NotFound();
+
+            var emailExiste = await _context.Propietarios
+                .AnyAsync(x => x.Email == propietario.Email && x.Id != p.Id);
+
+            if (emailExiste)
+                return BadRequest("El email ya está en uso");
 
             p.Dni = propietario.Dni;
             p.Nombre = propietario.Nombre;
@@ -129,7 +142,48 @@ public class PropietariosController : ControllerBase
         }
     }
 
-    
+    [Authorize]
+    [HttpPut("avatar")] // Listo
+    public async Task<IActionResult> Avatar([FromForm] IFormFile avatar)
+    {
+        try
+        {
+            string id = User.Claims.First(c => c.Type == "Id").Value;
+            var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
+
+            if (p == null)
+                return NotFound();
+
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest("No se ha seleccionado un archivo");
+
+            if (!string.IsNullOrEmpty(p.Avatar))
+            {
+                var pathOld = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", p.Avatar);
+                if (System.IO.File.Exists(pathOld))
+                {
+                    System.IO.File.Delete(pathOld);
+                }
+            }
+
+            var guid = Guid.NewGuid().ToString();
+            var fileName = $"AV{guid}{Path.GetExtension(avatar.FileName)}";
+            var pathNew = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", fileName);
+
+            using (var stream = new FileStream(pathNew, FileMode.Create))
+                await avatar.CopyToAsync(stream);
+
+            p.Avatar = fileName;
+            _context.SaveChanges();
+            return Ok("Avatar cambiado correctamente");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+
 
     // [HttpPost("hashed")] // Para hashear claves
     // public IActionResult Hasheada()

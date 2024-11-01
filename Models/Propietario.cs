@@ -9,5 +9,5 @@ public class Propietario
     public string Telefono { get; set; } = "";
     public string Email { get; set; } = "";
     public string Clave { get; set; } = "";
-    // public string Avatar { get; set; }
+    public string Avatar { get; set; } = "";
 }

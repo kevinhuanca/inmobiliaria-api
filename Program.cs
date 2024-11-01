@@ -54,6 +54,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Uso de archivos estáticos (*.html, *.css, *.js, etc.)
+app.UseStaticFiles();
+
 app.UseHttpsRedirection();
 
 // Habilitar autenticación
