@@ -2,6 +2,8 @@ namespace inmobiliaria.Controllers;
 
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Mail;
 using Microsoft.AspNetCore.Mvc;
 using inmobiliaria.Models;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +32,7 @@ public class PropietariosController : ControllerBase
     {
         try
         {
-            string hashed = Hash(loginView.Clave);
+            string hashed = HashPass(loginView.Clave);
 
             var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Email == loginView.Email);
 
@@ -122,7 +124,7 @@ public class PropietariosController : ControllerBase
             if (p == null)
                 return NotFound();
 
-            string hashedActual = Hash(cambiarClaveView.Actual);
+            string hashedActual = HashPass(cambiarClaveView.Actual);
 
             if (hashedActual != p.Clave)
                 return BadRequest("La clave actual es incorrecta");
@@ -130,7 +132,7 @@ public class PropietariosController : ControllerBase
             if (cambiarClaveView.Nueva != cambiarClaveView.Repetida)
                 return BadRequest("Las claves no coinciden");
 
-            string hashedNueva = Hash(cambiarClaveView.Nueva);
+            string hashedNueva = HashPass(cambiarClaveView.Nueva);
 
             p.Clave = hashedNueva;
             _context.SaveChanges();
@@ -183,22 +185,127 @@ public class PropietariosController : ControllerBase
         }
     }
 
+    [AllowAnonymous]
+    [HttpPost("email")] // Listo
+    public async Task<IActionResult> Email([FromForm] string email)
+    {
+        try
+        {
+            var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Email == email);
 
+            if (p == null)
+                return BadRequest("El email no existe");
 
-    // [HttpPost("hashed")] // Para hashear claves
-    // public IActionResult Hasheada()
-    // {
-    //     string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-    //         password: "123",
-    //         salt: System.Text.Encoding.ASCII.GetBytes(_configuration["Salt"]),
-    //         prf: KeyDerivationPrf.HMACSHA1,
-    //         iterationCount: 1000,
-    //         numBytesRequested: 256 / 8));
+            var key = new SymmetricSecurityKey(
+                System.Text.Encoding.ASCII.GetBytes(_configuration["TokenAuthentication:SecretKey"]));
+            var credenciales = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var claims = new List<Claim>
+            {
+                new Claim("Id", p.Id.ToString()),
+                new Claim("FullName", p.Nombre + " " + p.Apellido)
+            };
 
-    //     return Ok(hashed);
-    // }
+            var token = new JwtSecurityToken(
+                issuer: _configuration["TokenAuthentication:Issuer"],
+                audience: _configuration["TokenAuthentication:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(60),
+                signingCredentials: credenciales
+            );
 
-    private string Hash(string password) // Para hashear claves
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+            var url = "http://192.168.0.14:5285/api/propietarios/token?access_token="+tokenString;
+
+            string bodyMail = $@"
+                    <style> 
+                    * {{ 
+                        font-family: 'Segoe UI',Helvetica,Arial 
+                    }}
+                    .btn {{ 
+                        background-color: #2ea44f;
+                        border: 1px solid rgba(27, 31, 35, .15);
+                        color: #fff;
+                        cursor: pointer;
+                        font-weight: 600;
+                        padding: 2px 10px;
+                        text-decoration: none; 
+                    }} 
+                    </style>
+                    <h2>Restablecer Contraseña</h2>
+                    <p>Hola, {p.Nombre}</p>
+                    <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.</p>
+                    <p style='display: inline;'>Para continuar, haz clic en el siguiente enlace:</p>
+                    <a href='{url}' class='btn'>Restablecer mi contraseña</a>
+                    <p>Si no solicitaste este cambio, podes ignorar este correo.</p>
+                    <p>Gracias,<br/>El equipo de soporte.</p>
+                ";	
+
+            SendMail("test@mailtrap.com", p.Email, "Restablecer contraseña", bodyMail);
+
+            return Ok("Email enviado");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [Authorize]
+    [HttpGet("token")] // Listo
+    public async Task<IActionResult> Token([FromQuery] string access_token)
+    {
+        try
+        {
+            string id = User.Claims.First(c => c.Type == "Id").Value;
+            var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
+
+            if (p == null)
+                return NotFound();
+
+            Random rand = new Random(Environment.TickCount);
+            string randomChars = "ABCDEFGHJKLMNOPQRSTUVWXYZ0123456789";
+            string nuevaClave = "";
+            for (int i = 0; i < 4; i++)
+            {
+                nuevaClave += randomChars[rand.Next(0, randomChars.Length)];
+            }
+
+            string bodyMail = $@"
+                <style> 
+                * {{
+                    font-family: 'Segoe UI',Helvetica,Arial 
+                }}
+                .btn {{
+                    background-color: #ffffff;
+                    border: 1px solid rgba(27, 31, 35, .15);
+                    color: #000000;
+                    font-weight: 800;
+                    padding: 2px 10px;
+                    text-decoration: none; 
+                }}
+                </style>
+                <h2>Tu nueva contraseña</h2
+                <p>Hola, {p.Nombre}</p>
+                <p>Se ha generado una nueva contraseña exitosamente.</p>
+                <p>Tu nueva contraseña: <strong class='btn'>{nuevaClave}</strong></p>
+                <p>Te recomendamos cambiar esta contraseña la próxima vez que inicies sesión para mantener la seguridad de tu cuenta.</p>
+                <p>Gracias,<br/>El equipo de soporte.</p>
+            ";
+
+            SendMail("test@mailtrap.com", p.Email, "Tu nueva contraseña", bodyMail);
+
+            p.Clave = HashPass(nuevaClave);
+            _context.SaveChanges();
+
+            return Ok("Clave restablecida! Revisa tu correo");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    private string HashPass(string password)
     {
         return Convert.ToBase64String(KeyDerivation.Pbkdf2(
             password: password,
@@ -206,6 +313,26 @@ public class PropietariosController : ControllerBase
             prf: KeyDerivationPrf.HMACSHA1,
             iterationCount: 1000,
             numBytesRequested: 256 / 8));
+    }
+
+    private static void SendMail(string sender, string receiver, string subject, string body)
+    {
+        var client = new SmtpClient("sandbox.smtp.mailtrap.io", 587)
+        {
+            Credentials = new NetworkCredential("85f5bb955c6200", "988bd2d7fac119"),
+            EnableSsl = true
+        };
+
+        var message = new MailMessage
+        {
+            From = new MailAddress(sender),
+            Subject = subject,
+            Body = body,
+            IsBodyHtml = true,
+        };
+
+        message.To.Add(new MailAddress(receiver));
+        client.SendMailAsync(message);
     }
 
 }
