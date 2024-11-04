@@ -7,4 +7,5 @@ public class DataContext : DbContext
     {
     }
     public DbSet<Propietario> Propietarios { get; set; }
+    public DbSet<Inmueble> Inmuebles { get; set; }
 }

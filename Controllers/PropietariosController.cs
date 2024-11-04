@@ -209,7 +209,7 @@ public class PropietariosController : ControllerBase
                 issuer: _configuration["TokenAuthentication:Issuer"],
                 audience: _configuration["TokenAuthentication:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(60),
+                expires: DateTime.Now.AddMinutes(5),
                 signingCredentials: credenciales
             );
 
@@ -256,6 +256,12 @@ public class PropietariosController : ControllerBase
     {
         try
         {
+            var handler = new JwtSecurityTokenHandler();
+            var expiration = handler.ReadJwtToken(access_token).ValidTo;
+
+            if (expiration < DateTime.UtcNow)
+                return BadRequest("El link ya expiro!");
+
             string id = User.Claims.First(c => c.Type == "Id").Value;
             var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(id));
 
