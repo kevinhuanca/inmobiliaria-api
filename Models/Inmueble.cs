@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace inmobiliaria.Models;
 
 public class Inmueble
@@ -13,7 +11,5 @@ public class Inmueble
     public bool Disponible { get; set; }
     public string Imagen { get; set; } = "";	
     public int PropietarioId { get; set; }
-
-    [ForeignKey("PropietarioId")]
     public Propietario? Propietario { get; set; }
 }
