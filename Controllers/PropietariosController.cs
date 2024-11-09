@@ -161,7 +161,7 @@ public class PropietariosController : ControllerBase
 
             if (!string.IsNullOrEmpty(p.Avatar))
             {
-                var pathOld = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", p.Avatar);
+                var pathOld = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "av", p.Avatar);
                 if (System.IO.File.Exists(pathOld))
                 {
                     System.IO.File.Delete(pathOld);
@@ -169,8 +169,8 @@ public class PropietariosController : ControllerBase
             }
 
             var guid = Guid.NewGuid().ToString();
-            var fileName = $"AV{guid}{Path.GetExtension(avatar.FileName)}";
-            var pathNew = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", fileName);
+            var fileName = $"av{guid}{Path.GetExtension(avatar.FileName)}";
+            var pathNew = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "av", fileName);
 
             using (var stream = new FileStream(pathNew, FileMode.Create))
                 await avatar.CopyToAsync(stream);
@@ -214,7 +214,9 @@ public class PropietariosController : ControllerBase
             );
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-            var url = "http://192.168.0.14:5285/api/propietarios/token?access_token="+tokenString;
+
+            var dominio = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
+            string url = $"http://{dominio}:5285/api/propietarios/token?access_token={tokenString}";
 
             string bodyMail = $@"
                     <style> 

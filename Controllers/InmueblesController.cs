@@ -112,7 +112,9 @@ public class InmueblesController : ControllerBase
 
             i.Disponible = !i.Disponible;
             _context.SaveChanges();
-            return Ok("Modificado correctamente");
+
+            string mensaje = i.Disponible ? "Habilito el inmueble" : "Deshabilito el inmueble";
+            return Ok(mensaje);
         }
         catch (Exception ex)
         {
