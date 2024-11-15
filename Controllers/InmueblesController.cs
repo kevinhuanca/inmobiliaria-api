@@ -65,10 +65,14 @@ public class InmueblesController : ControllerBase
     {
         try
         {
+            var p = User.Claims.First(c => c.Type == "Id").Value;
             var i = await _context.Inmuebles.FirstOrDefaultAsync(x => x.Id == id);
 
             if (i == null)
-                return NotFound();
+                return NotFound("No se ha encontrado el inmueble");
+
+            if (i.PropietarioId != int.Parse(p))
+                return BadRequest("No tenes permiso para modificar este inmueble");
 
             if (imagen == null || imagen.Length == 0)
                 return BadRequest("No se ha seleccionado un archivo");
@@ -105,10 +109,14 @@ public class InmueblesController : ControllerBase
     {
         try
         {
+            var p = User.Claims.First(c => c.Type == "Id").Value;
             var i = await _context.Inmuebles.FirstOrDefaultAsync(x => x.Id == id);
 
             if (i == null)
-                return NotFound();
+                return NotFound("No existe el inmueble");
+
+            if (i.PropietarioId != int.Parse(p))
+                return BadRequest("No tenes permiso para modificar este inmueble");
 
             i.Disponible = !i.Disponible;
             _context.SaveChanges();
