@@ -30,10 +30,10 @@ Aplicación móvil diseñada para propietarios de una inmobiliaria, permitiéndo
 
 ## Vista previa
 
-| Inicio de Sesión | Menú | Inicio | Perfil |
-| :--- | :--- | :--- | :--- |
+| Inicio de Sesión        | Menú                    | Inicio                  | Perfil                  |
+| :---------------------- | :---------------------- | :---------------------- | :---------------------- |
 | <img src="wwwroot/ss/login.png" width="225"/> | <img src="wwwroot/ss/menu.png" width="225"/> | <img src="wwwroot/ss/inicio.png" width="225"/> | <img src="wwwroot/ss/perfil.png" width="225"/> |
 
-| Inmuebles | Agregar Inmueble | Detalle Inmueble | Pagos |
-| :--- | :--- | :--- | :--- |
+| Inmuebles               | Agregar Inmueble        | Detalle Inmueble        | Pagos                   |
+| :---------------------- | :---------------------- | :---------------------- | :---------------------- |
 | <img src="wwwroot/ss/inmuebles.png" width="225"/> | <img src="wwwroot/ss/crearinmueble.png" width="225"/> | <img src="wwwroot/ss/detalleinmueble.png" width="225"/> | <img src="wwwroot/ss/pagos.png" width="225"/> |
